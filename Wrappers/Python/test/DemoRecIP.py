@@ -7,47 +7,49 @@ Reading multi-channel data and reconstruction using FISTA modular
 import numpy as np
 import matplotlib.pyplot as plt
 
-import sys
+#import sys
 #sys.path.append('../../../data/')
+#sys.path.append('..')
+#sys.path.append('../ccpi/astra/')
 from read_IPdata import read_IPdata
 
 from ccpi.reconstruction.astra_ops import AstraProjector
 from ccpi.reconstruction.funcs import Norm2sq , BaseFunction
 from ccpi.reconstruction.algs import FISTA
-#from ccpi.reconstruction.funcs import BaseFunction
 
 from ccpi.framework import VolumeData, SinogramData
-
-
-from ccpi.filters.cpu_regularizers_boost import SplitBregman_TV , FGP_TV ,\
-                                                 LLT_model, PatchBased_Regul ,\
-                                                 TGV_PD
+from ccpi.filters.regularizers import FGP_TV
 
 
 # TV regularization class for FGP_TV method
-class TV_FGP(BaseFunction):
-    def __init__(self,lambdaReg,iterationsTV):
+class FGPTV(BaseFunction):
+    def __init__(self,lambdaReg,iterationsTV,device):
         # set parameters
         self.lambdaReg = lambdaReg
         self.iterationsTV = iterationsTV
-        super(TV_FGP, self).__init__()
+        self.device = device # string for 'cpu' or 'gpu'
+        #super(FGPTV, self).__init__()
     def fun(self,x):
         # function to calculate energy from utils can be used here
         return 0
     def prox(self,x,Lipshitz):
-        pars = {'algorithm' : FGP_TV , \
-                'input' : x.as_array(),
+        pars = {'algorithm' : FGP_TV, \
+               'input' : np.asarray(x.as_array(), dtype=np.float32),\
                 'regularization_parameter':self.lambdaReg*Lipshitz, \
                 'number_of_iterations' :self.iterationsTV ,\
                 'tolerance_constant':1e-4,\
-                'TV_penalty': 0}
+                'methodTV': 0 ,\
+                'nonneg': 0 ,\
+                'printingOut': 0}
         
-        out = FGP_TV (pars['input'], 
-                      pars['regularization_parameter'],
-                      pars['number_of_iterations'],
-                      pars['tolerance_constant'], 
-                      pars['TV_penalty'])
-        return out[0]
+        out = FGP_TV(pars['input'], 
+              pars['regularization_parameter'],
+              pars['number_of_iterations'],
+              pars['tolerance_constant'], 
+              pars['methodTV'],
+              pars['nonneg'],
+              pars['printingOut'], self.device)
+        return out
 
 # read IP paper data into a dictionary
 dataDICT = read_IPdata()
@@ -72,32 +74,33 @@ b = SinogramData(sino)
 # Try forward and backprojection
 #backprj = Aop.adjoint(b)
 
+
 # Create least squares object instance with projector and data.
 f = Norm2sq(Aop,b,c=0.5)
 
 # Initial guess
 x_init = VolumeData(np.zeros((dataDICT.get('im_size')[0],
                               dataDICT.get('im_size')[0])))
-
+"""
 # Run FISTA for least squares without regularization
 opt = {'tol': 1e-4, 'iter': 50}
 x_fista0, it0, timing0, criter0 = FISTA(x_init, f, None, opt)
 
 plt.imshow(x_fista0.array)
 plt.show()
-
+"""
 """
 # Now least squares plus 1-norm regularization
 #lam = 1
 #g0 = Norm1(lam)
 # using FGP_TV regularizer
+"""
 
-g0 = TV_FGP(lambdaReg = 0.01,iterationsTV=50)
+g0 = FGPTV(lambdaReg = 0.1,iterationsTV=1, device='cpu')
 
 # Run FISTA for least squares plus 1-norm function.
-opt = {'tol': 1e-4, 'iter': 50}
+opt = {'tol': 1e-4, 'iter': 1}
 x_fista1, it1, timing1, criter1 = FISTA(x_init, f, g0, opt)
 
-plt.imshow(x_fista1.array)
+plt.imshow(x_fista1.array, vmin=0, vmax=5)
 plt.show()
-"""

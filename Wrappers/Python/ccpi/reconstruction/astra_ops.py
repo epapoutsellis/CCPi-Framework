@@ -20,6 +20,7 @@ import numpy
 from ccpi.framework import SinogramData, VolumeData
 from ccpi.reconstruction.ops import PowerMethodNonsquare
 from ccpi.astra.astra_processors import AstraForwardProjector, AstraBackProjector
+import astra
 
 class AstraProjectorSimple(Operator):
     """ASTRA projector modified to use DataSet and geometry."""
