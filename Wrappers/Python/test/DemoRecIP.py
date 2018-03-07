@@ -35,6 +35,7 @@ class FGPTV(BaseFunction):
     def prox(self,x,Lipshitz):
         pars = {'algorithm' : FGP_TV, \
                'input' : np.asarray(x.as_array(), dtype=np.float32),\
+               #'input' : np.asarray(x, dtype=np.float32),\
                 'regularization_parameter':self.lambdaReg*Lipshitz, \
                 'number_of_iterations' :self.iterationsTV ,\
                 'tolerance_constant':1e-4,\
@@ -49,7 +50,7 @@ class FGPTV(BaseFunction):
               pars['methodTV'],
               pars['nonneg'],
               pars['printingOut'], self.device)
-        return out
+        return VolumeData(out, dimension_labels=x.dimension_labels)
 
 # read IP paper data into a dictionary
 dataDICT = read_IPdata()
@@ -96,10 +97,10 @@ plt.show()
 # using FGP_TV regularizer
 """
 
-g0 = FGPTV(lambdaReg = 0.1,iterationsTV=1, device='cpu')
+g0 = FGPTV(lambdaReg = 800,iterationsTV=60, device='gpu')
 
 # Run FISTA for least squares plus 1-norm function.
-opt = {'tol': 1e-4, 'iter': 1}
+opt = {'tol': 1e-4, 'iter': 100}
 x_fista1, it1, timing1, criter1 = FISTA(x_init, f, g0, opt)
 
 plt.imshow(x_fista1.array, vmin=0, vmax=5)
